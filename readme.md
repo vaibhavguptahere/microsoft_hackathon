@@ -1,122 +1,449 @@
-# Nexus Directory Guide
+# Nexus — Complete GitHub Workflow
 
-## `frontend/`
+## 1. First Time Only — Clone the Repository
 
-The user-facing layer of Nexus, containing the landing page, 3D architecture visualization, chat interface, animations, and API communication.
+```bash
+git clone https://github.com/vaibhavguptahere/microsoft_hackathon.git
+cd microsoft_hackathon
+```
 
-## `frontend/src/app/`
+Check branches:
 
-Defines Next.js routes and pages, separating the cinematic marketing experience from the actual Nexus application.
-
-## `frontend/src/components/landing/`
-
-Contains the Nexus landing-page sections that explain the problem, architecture, multi-agent system, trust layer, and product experience.
-
-## `frontend/src/components/three/`
-
-Powers the 3D architecture visualization, representing Nexus, domain agents, knowledge sources, connections, particles, and camera movement.
-
-## `frontend/src/components/chat/`
-
-Contains the interactive assistant UI, including messages, routing status, confidence, agent activity, and source citations.
-
-## `frontend/src/services/`
-
-Acts as the frontend API layer, handling communication between the Next.js interface and FastAPI backend.
-
-## `frontend/src/types/`
-
-Defines TypeScript contracts for chat requests, responses, sources, knowledge documents, and other API data.
+```bash
+git branch
+```
 
 ---
 
-## `backend/`
+## 2. Create Your Own Branch
 
-The core intelligence layer of Nexus, responsible for routing, agents, RAG, LLM interaction, knowledge processing, and API services.
+> **Never work directly on `main`.**
 
-## `backend/app/main.py`
+```bash
+git checkout -b feature/your-name
+```
 
-The entry point of the FastAPI application, registering API routes and initializing the Nexus backend.
+Examples:
 
-## `backend/app/api/`
-
-Contains the REST API endpoints through which the frontend communicates with Nexus.
-
-## `backend/app/services/`
-
-Contains the application-level business logic, coordinating API requests with orchestration, RAG, agents, and database operations.
-
-## `backend/app/orchestration/`
-
-The **brain of Nexus**. It understands user intent, decomposes multi-intent queries, routes requests to domain agents, manages confidence, and combines their responses.
-
-## `backend/app/agents/`
-
-Contains specialized domain agents such as HR, IT, and Finance that independently handle queries using their respective knowledge bases.
-
-## `backend/app/rag/`
-
-The knowledge retrieval engine, responsible for document ingestion, chunking, embeddings, vector search, and retrieving relevant evidence for agents.
-
-## `backend/app/llm/`
-
-Handles LLM communication, prompts, model configuration, and structured response processing.
-
-## `backend/app/db/`
-
-Manages persistent application data, including conversations, documents, document chunks, embeddings, and feedback.
-
-## `backend/app/schemas/`
-
-Defines Pydantic request and response models, ensuring API data is validated and consistently structured.
-
-## `backend/app/core/`
-
-Contains backend configuration and infrastructure utilities, including environment variables, security, logging, and application settings.
-
-## `backend/data/`
-
-Stores the enterprise knowledge sources used by Nexus, organized into HR, IT, Finance, and other domains.
-
-## `backend/tests/`
-
-Contains automated tests for routing, RAG retrieval, agents, APIs, and core Nexus functionality.
+```bash
+git checkout -b feature/vaibhav
+git checkout -b feature/nishika
+git checkout -b feature/isha
+git checkout -b feature/giri
+```
 
 ---
 
-## `docs/`
+## 3. Every Time You Start Working
 
-Contains project documentation, including architecture, API contracts, database design, and evaluation methodology.
+First, update `main`:
 
-## `docker-compose.yml`
+```bash
+git checkout main
+git pull origin main
+```
 
-Defines the local multi-service environment, allowing Nexus services and infrastructure such as PostgreSQL to run consistently.
+Then go back to your branch:
 
----
+```bash
+git checkout feature/your-name
+```
 
-# Core Nexus Flow
+Bring the latest `main` changes into your branch:
+
+```bash
+git merge main
+```
+
+Now start coding.
+
+### If Nothing Was Merged Into `main`
+
+That's completely fine.
+
+```bash
+git pull origin main
+```
+
+You may see:
 
 ```text
-User
-  ↓
-Next.js Frontend
-  ↓
-FastAPI
-  ↓
-Orchestrator ← BRAIN OF NEXUS
-  ↓
-Intent + Routing
-  ↓
-HR / IT / Finance Agents
-  ↓
-RAG Retriever
-  ↓
-Knowledge Base + Vector Database
-  ↓
-LLM
-  ↓
-Response Synthesizer
-  ↓
-Grounded Answer + Sources + Confidence
-  ↓
-Frontend
+Already up to date.
+```
+
+Your code is safe.
+
+---
+
+## 4. Work on Your Code
+
+Make your changes normally.
+
+Check what changed:
+
+```bash
+git status
+```
+
+---
+
+## 5. Save Your Work
+
+Add your changes:
+
+```bash
+git add .
+```
+
+Commit your changes:
+
+```bash
+git commit -m "Add RAG retrieval"
+```
+
+Examples:
+
+```bash
+git commit -m "Add HR agent"
+git commit -m "Create chat interface"
+git commit -m "Add document ingestion"
+git commit -m "Add 3D architecture"
+```
+
+---
+
+## 6. Push Your Branch
+
+### First Push
+
+```bash
+git push -u origin feature/your-name
+```
+
+### After the First Push
+
+```bash
+git push
+```
+
+Your code is now available on GitHub under your branch.
+
+---
+
+## 7. Create a Pull Request
+
+After pushing your branch:
+
+### Step 1
+
+Open the GitHub repository in your browser.
+
+### Step 2
+
+You will usually see a message like:
+
+```text
+feature/your-name had recent pushes
+[Compare & pull request]
+```
+
+Click **Compare & pull request**.
+
+If you don't see it:
+
+```text
+Repository
+   ↓
+Pull requests
+   ↓
+New pull request
+```
+
+### Step 3 — Select Branches
+
+Make sure:
+
+```text
+base repository:   nexus
+base:              main
+
+compare:           feature/your-name
+```
+
+It should look like:
+
+```text
+main  ←  feature/your-name
+```
+
+### Step 4 — Add Pull Request Title
+
+Example:
+
+```text
+Add RAG Retrieval Pipeline
+```
+
+### Step 5 — Add Description
+
+Keep it simple:
+
+```markdown
+## Changes
+- Added document ingestion
+- Added text chunking
+- Added vector retrieval
+
+## Testing
+- Tested document upload
+- Tested retrieval API
+```
+
+### Step 6
+
+Click **Create pull request**.
+
+---
+
+## 8. After Creating the Pull Request
+
+Do not merge your own PR immediately unless the team has agreed that you can.
+
+Ask another teammate to review your code.
+
+```text
+Your Branch
+     ↓
+Pull Request
+     ↓
+Code Review
+     ↓
+Approved
+     ↓
+Merge into main
+```
+
+---
+
+## 9. If Changes Are Requested
+
+Make the requested changes on the same branch.
+
+```bash
+git add .
+git commit -m "Fix review comments"
+git push
+```
+
+Your existing Pull Request will automatically update. You do not need to create another PR.
+
+---
+
+## 10. Before Your PR Gets Merged
+
+If another teammate has merged new code into `main`, update your branch:
+
+```bash
+git checkout main
+git pull origin main
+git checkout feature/your-name
+git merge main
+```
+
+Then:
+
+```bash
+git push
+```
+
+Your Pull Request will be updated.
+
+---
+
+## 11. After Your PR Is Merged
+
+Once your PR is merged into `main`:
+
+```bash
+git checkout main
+git pull origin main
+```
+
+Now `main` contains your changes.
+
+For your next task, create a new branch:
+
+```bash
+git checkout -b feature/new-feature
+```
+
+---
+
+## ⚠️ Important Team Rules
+
+### Rule 1 — Never Code Directly on `main`
+
+❌ Don't:
+
+```bash
+git checkout main
+
+# Write code
+
+git add .
+git commit
+git push
+```
+
+✅ Always use your own branch:
+
+```bash
+git checkout -b feature/your-name
+```
+
+### Rule 2 — Pull `main` Before Starting Work
+
+Every time you start working:
+
+```bash
+git checkout main
+git pull origin main
+git checkout feature/your-name
+git merge main
+```
+
+### Rule 3 — Your Code Will Not Be Deleted
+
+Running:
+
+```bash
+git pull origin main
+```
+
+updates your local `main`. It does **not** delete your feature branch or your committed work.
+
+```text
+main
+│
+├── Team's merged code
+│
+└── feature/your-name
+      └── Your code
+```
+
+### Rule 4 — Commit Before Switching Branches
+
+If you have unfinished changes:
+
+```bash
+git add .
+git commit -m "WIP: working on router"
+```
+
+Then switch branches.
+
+### Rule 5 — One Teammate = One Feature Branch
+
+```text
+main
+│
+├── feature/vaibhav-backend
+├── feature/member2-rag
+├── feature/member3-cloud
+└── feature/member4-frontend
+```
+
+Don't work on someone else's branch.
+
+### Rule 6 — Before Creating a PR, Update Your Branch
+
+```bash
+git checkout main
+git pull origin main
+git checkout feature/your-name
+git merge main
+git push
+```
+
+Then create/update the Pull Request.
+
+---
+
+## 🚀 Complete Workflow
+
+```text
+START
+  │
+  ▼
+git checkout main
+  │
+  ▼
+git pull origin main
+  │
+  ▼
+git checkout your-branch
+  │
+  ▼
+git merge main
+  │
+  ▼
+WRITE CODE
+  │
+  ▼
+git add .
+  │
+  ▼
+git commit -m "..."
+  │
+  ▼
+git push
+  │
+  ▼
+CREATE PULL REQUEST
+  │
+  ▼
+CODE REVIEW
+  │
+  ├── Changes requested
+  │       ↓
+  │   Make changes
+  │       ↓
+  │   git push
+  │
+  ▼
+APPROVED
+  │
+  ▼
+MERGE → main
+  │
+  ▼
+git checkout main
+git pull origin main
+  │
+  ▼
+CREATE NEW BRANCH
+```
+
+---
+
+## ⭐ Commands to Remember
+
+```bash
+# Start work
+git checkout main
+git pull origin main
+git checkout feature/your-name
+git merge main
+
+# Work on your code
+
+# Save changes
+git add .
+git commit -m "your message"
+git push
+
+# Then create Pull Request on GitHub
+```
+
+> **Golden Rule:**
+> Pull → Update your branch → Code → Commit → Push → Pull Request → Review → Merge
