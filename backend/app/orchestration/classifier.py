@@ -23,6 +23,9 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import pickle
+import numpy as np
 from typing import Any
 
 from pydantic import ValidationError
@@ -31,8 +34,28 @@ from app.schemas.routing import Domain, Intent, RoutingResult
 from app.services.llm_service import llm_service
 from app.services.zero_shot_classifier import classify_zero_shot
 
-
 logger = logging.getLogger(__name__)
+
+# ── Local Fast Classifier ──────────────────────────────────────────────────
+_local_clf = None
+_local_mlb = None
+_encoder = None
+
+def _get_local_model():
+    global _local_clf, _local_mlb, _encoder
+    if _encoder is None:
+        try:
+            from sentence_transformers import SentenceTransformer
+            _encoder = SentenceTransformer("all-MiniLM-L6-v2")
+            model_path = os.path.join(os.path.dirname(__file__), "..", "models", "intent_classifier.pkl")
+            with open(model_path, "rb") as f:
+                data = pickle.load(f)
+                _local_clf = data["clf"]
+                _local_mlb = data["mlb"]
+        except Exception as e:
+            logger.error(f"Failed to load local model: {e}")
+            return False
+    return True
 
 
 # ── Canonical intent names sent to the LLM ───────────────────────────────────
@@ -134,6 +157,9 @@ Query: "How many leaves do I have?"
 
 Query: "My VPN is broken and can I work from home?"
 {{"status":"multi_intent","intents":[{{"domain":"IT","intent":"vpn_troubleshooting","query":"My VPN is broken"}},{{"domain":"HR","intent":"work_from_home","query":"Can I work from home?"}}],"clarification_question":""}}
+
+Query: "I need a laptop, how do I expense my travel, and what is the leave policy?"
+{{"status":"multi_intent","intents":[{{"domain":"IT","intent":"laptop_request","query":"I need a laptop"}},{{"domain":"FINANCE","intent":"travel_reimbursement","query":"how do I expense my travel"}},{{"domain":"HR","intent":"hr_policy","query":"what is the leave policy"}}],"clarification_question":""}}
 
 Query: "I cannot access my account."
 {{"status":"clarification_required","intents":[],"clarification_question":"Which account or system are you unable to access — email, VPN, HR portal, or something else?"}}
@@ -318,49 +344,55 @@ def _infer_intent_name(domain: str, query: str) -> str:
 
 async def classify_query(user_query: str) -> RoutingResult:
     """
-    Hybrid classifier:
-      1. Run BART zero-shot (fast, always)
-      2. If BART is confident → return result immediately
-      3. Otherwise → Ollama for full reasoning
+    Fast Multi-Label Classifier:
+    Uses the trained local sentence-transformer model to instantly classify
+    single and multi-intent queries across HR, IT, and Finance.
     """
-
     logger.info("classify_query: %r", user_query)
 
-    # ── Step 1: BART zero-shot ────────────────────────────────────────────────
+    if _get_local_model():
+        # Fast local prediction
+        query_vec = _encoder.encode([user_query])
+        probs = _local_clf.predict_proba(query_vec)[0]
+        
+        THRESHOLD = 0.25 # Lower threshold to catch multi-intents easily
+        predictions = (probs >= THRESHOLD).astype(int)
+        
+        # Safe inverse transform
+        try:
+            predicted_labels = _local_mlb.inverse_transform(np.array([predictions]))[0]
+        except Exception as e:
+            predicted_labels = []
+            
+        if len(predicted_labels) == 0:
+            logger.info("No intents passed threshold -> out_of_scope")
+            return RoutingResult.make_out_of_scope()
+            
+        intents = []
+        for label in predicted_labels:
+            parts = label.split("/")
+            if len(parts) == 2:
+                domain, intent = parts
+                intents.append(Intent(domain=domain, intent=intent, query=user_query))
+                
+        if len(intents) == 1:
+            status = "single_intent"
+        else:
+            status = "multi_intent"
+            
+        logger.info(f"Local model predicted: {status} with intents {predicted_labels}")
+        return RoutingResult(status=status, intents=intents, clarification_question=None)
+
+    # ── Fallback if model fails to load ───────────────────────────────────────
+    logger.warning("Local model not found. Falling back to zero-shot...")
     bart_result = classify_zero_shot(user_query)
-
-    logger.info(
-        "BART decision: %s | primary: %s | confidence: %.3f",
-        bart_result.decision,
-        bart_result.primary_domain,
-        bart_result.confidence,
-    )
-
-    # ── Step 2: Fast paths ────────────────────────────────────────────────────
-
+    
     if bart_result.decision == "out_of_scope":
-        logger.info("Fast path: out_of_scope")
         return RoutingResult.make_out_of_scope()
-
+        
     if bart_result.decision == "single_intent" and bart_result.primary_domain:
         domain: Domain = bart_result.primary_domain  # type: ignore[assignment]
         intent_name = _infer_intent_name(domain, user_query)
-        logger.info("Fast path: single_intent → %s / %s", domain, intent_name)
-        return RoutingResult.make_single(
-            domain=domain,
-            intent=intent_name,
-            query=user_query,
-        )
+        return RoutingResult.make_single(domain=domain, intent=intent_name, query=user_query)
 
-    # ── Step 3: Ollama slow path (multi-intent, defer_to_llm) ─────────────────
-    logger.info("Slow path: Ollama reasoning (bart_decision=%s)", bart_result.decision)
-
-    # Pass domain hints in user message so Ollama has context from BART
-    hint = ""
-    if bart_result.decision == "multi_intent":
-        hint = (
-            f"\n\n[System context: This query appears to involve both "
-            f"{bart_result.primary_domain} and {bart_result.secondary_domain} topics.]"
-        )
-
-    return await _classify_via_ollama(user_query + hint)
+    return await _classify_via_ollama(user_query)
