@@ -1,3 +1,54 @@
+# Beacon — Enterprise AI Query Router & Chat
+
+## 🏗️ Architecture Overview
+
+This project is built using a modern decoupled architecture, combining a responsive Next.js 15 frontend with a high-performance Python FastAPI backend, supported by local LLM orchestration and Supabase.
+
+### 🎨 Frontend (UI & Client)
+- **Framework**: Next.js 15 (App Router), React 19
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS v4, Vanilla CSS (`index.css` for background gradients and noise)
+- **Animations & Graphics**: Framer Motion (page/component transitions), GSAP, `@react-three/fiber` / `@react-three/drei` (3D rendering capabilities)
+- **UI Components**: Radix UI Primitives (headless components)
+- **Auth & State**: Supabase SSR (`@supabase/ssr`, `@supabase/supabase-js`)
+- **Key Files**: 
+  - `app/auth/page.tsx` (Supabase Login/Signup)
+  - `app/assistant/page.tsx` (Chat Interface fetching from Backend)
+
+### ⚙️ Backend (API & Orchestration)
+- **Framework**: FastAPI (Python)
+- **Language**: Python 3.10+
+- **LLM Orchestration**: Ollama-based zero-shot intent classifier (`beacon-router` model).
+- **Core Libraries**: `pydantic`, `ollama`, `transformers`, `torch`, `sentencepiece`
+- **Endpoints**: 
+  - `POST /api/chat`: Receives user query, runs Ollama classification, and returns domain-specific RAG responses.
+  - `GET /api/health`: Health check endpoint.
+- **Key Directories**: 
+  - `backend/app/api/routes` (FastAPI controllers)
+  - `backend/app/orchestration` (Classification and routing logic)
+
+### 🗄️ Database (Supabase / PostgreSQL)
+- **Provider**: Supabase (PostgreSQL)
+- **Authentication**: Supabase Auth (JWT, `auth.users` table)
+- **Schema**:
+  - `public.profiles`: Stores user metadata (linked to `auth.users` via trigger).
+  - `public.chats`: Stores chat session history.
+  - `public.messages`: Stores individual messages tied to a chat.
+- **Security**: Row Level Security (RLS) is strictly enforced so users can only access their own data.
+
+### 🔄 System Approach & Request Flow
+The core approach behind Beacon relies on a multi-intent, hybrid query routing system ensuring queries are directed to the correct domain-specific knowledge bases.
+
+1. **User Input:** A user enters a query on the Next.js frontend.
+2. **Backend Processing:** The query is forwarded to the FastAPI backend (`/api/chat`).
+3. **Intent Classification (Ollama):** The zero-shot classifier running on a local Ollama instance (`beacon-router`) analyzes the query and classifies it into an enterprise domain (HR, IT, Finance) or flags it as out-of-scope / needing clarification.
+4. **Domain Routing:** The backend router captures the intent and determines the correct Azure RAG (Retrieval-Augmented Generation) pipeline.
+5. **Knowledge Retrieval (Azure RAG):** The system securely retrieves contextually relevant evidence from the specific domain's knowledge base. *(Note: Currently in development/simulation phase).*
+6. **Response Generation:** The LLM forms a coherent answer grounded *only* in the retrieved evidence.
+7. **Client Delivery:** The final answer, along with cited sources, is returned to the frontend and displayed to the user via the chat interface.
+
+---
+
 # Nexus — Complete GitHub Workflow
 
 ## 1. First Time Only — Clone the Repository
