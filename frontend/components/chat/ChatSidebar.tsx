@@ -2,7 +2,15 @@
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 
-export function ChatSidebar({ thinking }: { thinking: string[] | null }) {
+export function ChatSidebar({ 
+  thinking, 
+  sessions = [], 
+  onSelectChat 
+}: { 
+  thinking: string[] | null,
+  sessions?: any[],
+  onSelectChat?: (id: string) => void
+}) {
   return (
     <aside className="relative z-10 hidden w-72 shrink-0 p-4 lg:block">
       <div className="glass-panel flex h-full flex-col rounded-3xl p-5">
@@ -30,31 +38,25 @@ export function ChatSidebar({ thinking }: { thinking: string[] | null }) {
           })}
         </div>
 
-        <div className="mt-8 space-y-3">
-          <span className="eyebrow">knowledge graph</span>
+        <div className="mt-8 flex-1 overflow-y-auto space-y-3 pr-2 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-border/50 [&::-webkit-scrollbar-thumb]:rounded-full">
+          <span className="eyebrow sticky top-0 bg-background/80 backdrop-blur-sm z-10 py-1">chat history</span>
           <div className="space-y-2">
-            {[
-              { label: "HR", value: 64 },
-              { label: "IT", value: 88 },
-              { label: "Finance", value: 41 },
-            ].map((k) => (
-              <div key={k.label}>
-                <div className="flex justify-between text-[10px] text-muted-foreground">
-                  <span className="font-mono tracking-[0.18em]">{k.label.toUpperCase()}</span>
-                  <span>{k.value}%</span>
-                </div>
-                <div className="mt-1 h-1 rounded-full bg-secondary">
-                  <div
-                    className="h-1 rounded-full bg-gradient-to-r from-primary to-accent"
-                    style={{ width: `${k.value}%` }}
-                  />
-                </div>
-              </div>
+            {sessions.map((session) => (
+              <button
+                key={session.id}
+                onClick={() => onSelectChat?.(session.id)}
+                className="w-full text-left truncate rounded-lg border border-border/40 px-3 py-2 text-[12px] text-muted-foreground hover:bg-white/5 hover:text-foreground transition-colors"
+              >
+                {session.title || "New Chat"}
+              </button>
             ))}
+            {sessions.length === 0 && (
+              <p className="text-[11px] text-muted-foreground/60">No recent chats.</p>
+            )}
           </div>
         </div>
 
-        <div className="mt-auto flex items-center gap-2 rounded-xl border border-border/60 px-3 py-2 text-[11px] text-muted-foreground">
+        <div className="mt-4 flex items-center gap-2 rounded-xl border border-border/60 px-3 py-2 text-[11px] text-muted-foreground shrink-0">
           <ShieldCheck className="h-3.5 w-3.5 text-primary" />
           Human escalation on standby
         </div>

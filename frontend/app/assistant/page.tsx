@@ -31,13 +31,26 @@ export default function AssistantPage() {
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (user) {
-        // Fetch additional profile data from the public.users table
-        const { data: profile } = await supabase
-          .from("users")
+        // Ensure profile exists in public.profiles table
+        let { data: profile } = await supabase
+          .from("profiles")
           .select("*")
           .eq("id", user.id)
           .single();
-          
+
+        if (!profile) {
+          const { data: newProfile } = await supabase
+            .from("profiles")
+            .upsert({
+              id: user.id,
+              email: user.email!,
+              name: user.user_metadata?.name || user.email?.split("@")[0] || "User",
+            })
+            .select()
+            .single();
+          profile = newProfile;
+        }
+
         setUser({ ...user, ...profile });
       } else {
         setUser(null);
@@ -81,12 +94,40 @@ export default function AssistantPage() {
     }
   }, []);
 
+  const [chatId, setChatId] = useState<string | null>(null);
+  const [chatSessions, setChatSessions] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (user) {
+      supabase.from("chats").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).then(({ data }) => {
+        if (data) setChatSessions(data);
+      });
+    }
+  }, [user, supabase]);
+
+  const loadChat = async (id: string) => {
+    if (id === chatId) return;
+    setChatId(id);
+    setMessages([]);
+    const { data: msgs } = await supabase.from("messages").select("*").eq("chat_id", id).order("created_at", { ascending: true });
+    if (msgs) {
+      setMessages(msgs.map((m: any) => ({
+        id: ++idRef.current,
+        role: m.role,
+        text: m.content,
+        evidence: m.sources || [],
+        confidence: m.role === 'nexus' ? 90 : undefined,
+        agents: m.domain ? ["Router Agent", `${m.domain} Agent`, "Response Generator"] : [],
+      })));
+    }
+  };
+
   const send = async (value: string) => {
     const q = value.trim();
     if (!q || thinking) return;
     setInput("");
 
-    // Add user message immediately
+    // Add user message to UI immediately
     setMessages((m) => [...m, { id: ++idRef.current, role: "user", text: q }]);
 
     // Start thinking state
@@ -96,6 +137,46 @@ export default function AssistantPage() {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 
+      let currentChatId = chatId;
+
+      // 1. If user is logged in, handle Chat persistence
+      if (user) {
+        if (!currentChatId) {
+          // Ensure profile exists before insert
+          await supabase.from("profiles").upsert({
+            id: user.id,
+            email: user.email!,
+            name: user.user_metadata?.name || user.email?.split("@")[0] || "User",
+          });
+
+          // Create a new chat session in Supabase
+          const { data: chatData, error: chatError } = await supabase
+            .from("chats")
+            .insert([{ user_id: user.id, title: q.substring(0, 40) + "..." }])
+            .select()
+            .single();
+
+          if (chatError) {
+            console.error("Failed to create chat session:", chatError);
+          } else if (chatData) {
+            currentChatId = chatData.id;
+            setChatId(currentChatId);
+            setChatSessions((prev) => [chatData, ...prev]);
+          }
+        }
+
+        // Save User Message to Supabase
+        if (currentChatId) {
+          const { error: msgError } = await supabase.from("messages").insert([{
+            chat_id: currentChatId,
+            role: "user",
+            content: q
+          }]);
+          if (msgError) console.error("Failed to save user message:", msgError);
+        }
+      }
+
+      // 2. Fetch answer from backend
       const res = await fetch("http://localhost:8000/api/chat", {
         method: "POST",
         headers: {
@@ -106,15 +187,27 @@ export default function AssistantPage() {
       });
 
       const data = await res.json();
-
       setThinking(null);
 
       if (data.success) {
+        const sourcesMapped = (data.sources || []).map((s: any) => ({ source: s.title, detail: s.url }));
+
+        // 3. Save Assistant Message to Supabase
+        if (user && currentChatId) {
+          await supabase.from("messages").insert([{
+            chat_id: currentChatId,
+            role: "nexus", // or 'assistant'
+            content: data.answer,
+            domain: data.domain,
+            sources: sourcesMapped
+          }]);
+        }
+
         setMessages((m) => [...m, {
           id: ++idRef.current,
           role: "nexus",
           text: data.answer,
-          evidence: (data.sources || []).map((s: any) => ({ source: s.title, detail: s.url })),
+          evidence: sourcesMapped,
           confidence: data.requires_login ? undefined : 90,
           agents: ["Router Agent", `${data.domain} Agent`, "Response Generator"],
           requiresLogin: data.requires_login
@@ -143,13 +236,13 @@ export default function AssistantPage() {
   };
 
   return (
-    <div className="noise relative flex h-[100svh] overflow-hidden bg-background">
+    <div className="relative flex h-[100svh] overflow-hidden bg-background">
       <CursorGlow />
       <div className="pointer-events-none absolute inset-0 grid-bg opacity-40" />
       <div className="pointer-events-none absolute inset-0 aurora-bg opacity-50" />
 
       {/* Floating sidebar */}
-      <ChatSidebar thinking={thinking} />
+      <ChatSidebar thinking={thinking} sessions={chatSessions} onSelectChat={loadChat} />
 
       {/* Logout Button */}
       {user && (
@@ -202,7 +295,7 @@ export default function AssistantPage() {
 
       {/* Conversation */}
       <main className="relative z-10 flex min-w-0 flex-1 flex-col p-4">
-        <div ref={scrollRef} className="flex-1 overflow-y-auto pb-6">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto pb-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <div className="mx-auto max-w-2xl space-y-6 pt-10">
             {messages.length === 0 && (
               <div className="text-center">
@@ -252,22 +345,24 @@ export default function AssistantPage() {
                   exit={{ opacity: 0 }}
                   className="glass-panel rounded-3xl p-5"
                 >
-                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                    <Sparkles className="h-3.5 w-3.5 animate-pulse text-primary" />
-                    Beacon is orchestrating
-                  </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {thinking.map((a, i) => (
-                      <motion.span
-                        key={a}
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.32 }}
-                        className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 font-mono text-[10px] tracking-[0.16em] text-foreground"
-                      >
-                        {a.toUpperCase()}
-                      </motion.span>
-                    ))}
+                  <div className="flex items-center gap-2 text-[13px] text-primary font-medium tracking-wide p-1">
+                    <Sparkles className="h-4 w-4 animate-pulse" />
+                    <div className="flex">
+                      {"Beacon is orchestrating...".split("").map((char, index) => (
+                        <motion.span
+                          key={index}
+                          animate={{ y: [0, -4, 0], opacity: [0.5, 1, 0.5] }}
+                          transition={{
+                            duration: 0.8,
+                            repeat: Infinity,
+                            delay: index * 0.05,
+                            ease: "easeInOut"
+                          }}
+                        >
+                          {char === " " ? "\u00A0" : char}
+                        </motion.span>
+                      ))}
+                    </div>
                   </div>
                 </motion.div>
               )}

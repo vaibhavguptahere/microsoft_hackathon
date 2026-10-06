@@ -1,24 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, LogIn } from "lucide-react";
+import { FileText, LogIn, ChevronDown, BookOpen } from "lucide-react";
 import Link from "next/link";
 import type { Msg } from "./types";
 
 export function NexusMessage({ msg }: { msg: Msg }) {
-  const [shown, setShown] = useState("");
-
-  useEffect(() => {
-    let i = 0;
-    const id = window.setInterval(() => {
-      i += 2;
-      setShown(msg.text.slice(0, i));
-      if (i >= msg.text.length) window.clearInterval(id);
-    }, 16);
-    return () => window.clearInterval(id);
-  }, [msg.text]);
-
-  const done = shown.length >= msg.text.length;
+  const [showSources, setShowSources] = useState(false);
+  
+  const hasEvidence = msg.evidence && msg.evidence.length > 0;
 
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
@@ -35,11 +25,10 @@ export function NexusMessage({ msg }: { msg: Msg }) {
           )}
         </div>
         <p className="mt-4 text-sm leading-relaxed text-foreground">
-          {shown}
-          {!done && <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-primary align-middle" />}
+          {msg.text}
         </p>
         
-        {done && msg.requiresLogin && (
+        {msg.requiresLogin && (
           <div className="mt-5">
             <Link 
               href="/auth" 
@@ -50,29 +39,51 @@ export function NexusMessage({ msg }: { msg: Msg }) {
             </Link>
           </div>
         )}
-      </div>
-
-      <AnimatePresence>
-        {done && msg.evidence && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="grid gap-3 sm:grid-cols-2"
-          >
-            {msg.evidence.map((e) => (
-              <div key={e.source} className="glass-panel rounded-2xl p-4">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-3.5 w-3.5 text-primary" />
-                  <span className="font-mono text-[10px] tracking-[0.14em] text-foreground">
-                    {e.source}
-                  </span>
-                </div>
-                <p className="mt-2 text-[11px] text-muted-foreground">{e.detail}</p>
-              </div>
-            ))}
-          </motion.div>
+        
+        {/* ChatGPT-style expandable sources button inside the chat bubble */}
+        {hasEvidence && (
+          <div className="mt-4 pt-4 border-t border-white/5">
+            <button
+              onClick={() => setShowSources(!showSources)}
+              className="group flex items-center gap-2 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <BookOpen className="h-3 w-3" />
+              </span>
+              <span>Sources</span>
+              <span className="text-[10px] opacity-70">({msg.evidence?.length})</span>
+              <ChevronDown 
+                className={`ml-1 h-3.5 w-3.5 transition-transform duration-200 ${showSources ? "rotate-180" : ""}`} 
+              />
+            </button>
+            
+            <AnimatePresence>
+              {showSources && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    {msg.evidence?.map((e, idx) => (
+                      <div key={`${e.source}-${idx}`} className="flex flex-col gap-1 rounded-xl bg-black/20 p-3 border border-white/5">
+                        <div className="flex items-center gap-2 text-xs font-semibold text-primary">
+                          <FileText className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{e.source}</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground line-clamp-2" title={e.detail}>
+                          {e.detail}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         )}
-      </AnimatePresence>
+      </div>
     </motion.div>
   );
 }

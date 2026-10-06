@@ -52,95 +52,51 @@ async def chat_endpoint(request: ChatRequest, authorization: Optional[str] = Hea
     try:
         logger.info(f"Received chat message: {request.message}")
 
-        db_client = create_client(url, key)
-        if authorization and authorization.startswith("Bearer "):
+        db_client = create_client(url, key) if url and key else None
+        
+        # 1. Check Authentication
+        user_id = None
+        auth_error = None
+        if db_client and authorization and authorization.startswith("Bearer "):
             token = authorization.split(" ")[1]
-            db_client.postgrest.auth(token)
-
-        # Ensure session exists or create one
-        session_id = request.session_id
-        if db_client:
             try:
-                if not session_id:
-                    # Generate a title from the first message
-                    title = request.message[:50] + "..." if len(request.message) > 50 else request.message
-                    session_resp = db_client.table("chats").insert({"title": title}).execute()
-                    if session_resp.data:
-                        session_id = session_resp.data[0]["id"]
-                
-                if session_id:
-                    # Save user message
-                    db_client.table("messages").insert({
-                        "chat_id": session_id,
-                        "role": "user",
-                        "content": request.message,
-                        "evidence": [],
-                        "confidence": 0,
-                        "agents": []
-                    }).execute()
+                user_resp = db_client.auth.get_user(token)
+                if user_resp and user_resp.user:
+                    user_id = user_resp.user.id
             except Exception as e:
-                logger.error(f"Database error saving user message: {e}")
+                auth_error = str(e)
+                logger.error(f"Auth verification failed: {e}")
+        
+        if not user_id:
+            return {
+                "success": False,
+                "error": f"You must be signed in to ask a message. {auth_error if auth_error else ''}",
+                "requires_login": True
+            }
 
-        # 1. Classify the query
+        # 2. Classify the query
         classification = await classify_query(request.message)
         logger.info(f"Classification result: {classification.status}")
 
-        # 2. Route based on classification
+        # 3. Route based on classification
         routing = route_classification(classification)
 
-        def save_bot_message(response_data):
-            if db_client and session_id:
-                try:
-                    db_client.table("messages").insert({
-                        "chat_id": session_id,
-                        "role": "nexus",
-                        "content": response_data.get("answer", ""),
-                        "evidence": response_data.get("sources", []),
-                        "confidence": response_data.get("confidence", 90),
-                        "agents": response_data.get("agents", [])
-                    }).execute()
-                except Exception as e:
-                    logger.error(f"Failed to save bot message: {e}")
-
-        def check_auth_and_return(res):
-            is_logged_in = False
-            if db_client and authorization and authorization.startswith("Bearer "):
-                token = authorization.split(" ")[1]
-                try:
-                    user_resp = db_client.auth.get_user(token)
-                    if user_resp and user_resp.user:
-                        is_logged_in = True
-                except Exception as e:
-                    logger.error(f"Auth verification failed: {e}")
-            
-            if not is_logged_in:
-                res["answer"] = "Please login to continue."
-                res["sources"] = []
-                res["requires_login"] = True
-
-            save_bot_message(res)
-            return res
-
-        # 3. Simulate Azure RAG response since no Azure RAG logic exists
+        # 4. Simulate Azure RAG response since no Azure RAG logic exists
         if routing.get("action") == "out_of_scope":
-            res = {
+            return {
                 "success": True,
                 "domain": "0",
                 "answer": routing.get("message", "I cannot help with that query."),
-                "sources": [],
-                "session_id": session_id
+                "sources": []
             }
-            return check_auth_and_return(res)
         
         elif routing.get("action") == "ask_clarification":
-            res = {
+            return {
                 "success": True,
                 "domain": "0",
                 "answer": routing.get("message", "Please clarify your query."),
-                "sources": [],
-                "session_id": session_id
+                "sources": []
             }
-            return check_auth_and_return(res)
 
         elif routing.get("action") == "route_to_domains":
             domains = [r["domain"] for r in routing.get("routes", [])]
@@ -151,27 +107,23 @@ async def chat_endpoint(request: ChatRequest, authorization: Optional[str] = Hea
                 from app.rag.pipeline import ask
                 rag_result = ask(request.message, department=primary_domain)
                 
-                res = {
+                return {
                     "success": True,
                     "domain": primary_domain,
                     "answer": rag_result.get("answer", "No answer could be generated."),
                     "sources": [
                         {"title": f"{src.get('document', 'Document')} (Page {src.get('page', 'unknown')})", "url": "#"} 
                         for src in rag_result.get("sources", [])
-                    ],
-                    "session_id": session_id
+                    ]
                 }
             except Exception as e:
                 logger.error(f"Error calling Azure RAG pipeline: {e}")
-                res = {
+                return {
                     "success": False,
                     "domain": primary_domain,
                     "answer": "An error occurred while fetching information from our knowledge base.",
-                    "sources": [],
-                    "session_id": session_id
+                    "sources": []
                 }
-                
-            return check_auth_and_return(res)
 
         return {
             "success": False,

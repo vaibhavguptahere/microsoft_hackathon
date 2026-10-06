@@ -19,20 +19,34 @@ export default function AuthPage() {
   const supabase = createClient();
   const [error, setError] = useState<string | null>(null);
 
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setInfoMessage(null);
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (error) throw error;
+
+        if (data.user) {
+          // Sync profile to ensure record exists in public.profiles
+          await supabase.from("profiles").upsert({
+            id: data.user.id,
+            email: data.user.email!,
+            name: data.user.user_metadata?.name || email.split("@")[0],
+          });
+        }
+        router.push("/assistant");
+        router.refresh();
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -43,14 +57,34 @@ export default function AuthPage() {
           },
         });
         if (error) throw error;
-      }
 
-      router.push("/assistant");
-      router.refresh();
+        if (data.user && !data.session) {
+          // Email confirmation is required by Supabase project settings
+          setInfoMessage(
+            "Account created! Please check your email to confirm your account before signing in."
+          );
+          setLoading(false);
+          setIsLogin(true);
+          return;
+        }
+
+        if (data.user && data.session) {
+          // Auto signed in (email confirm is disabled)
+          await supabase.from("profiles").upsert({
+            id: data.user.id,
+            email: data.user.email!,
+            name: name || email.split("@")[0],
+          });
+          router.push("/assistant");
+          router.refresh();
+        }
+      }
     } catch (err: any) {
       let errorMessage = err.message || "An error occurred";
-      if (errorMessage === "Invalid login credentials" && isLogin) {
-        errorMessage = "User ID not found. Please sign up to continue.";
+      if (err.code === "email_not_confirmed" || errorMessage.includes("Email not confirmed")) {
+        errorMessage = "Your email has not been confirmed in Supabase. Please check your inbox, or run the provided SQL script in Supabase SQL Editor to auto-confirm all accounts.";
+      } else if (errorMessage === "Invalid login credentials" && isLogin) {
+        errorMessage = "Invalid email or password. If you just signed up, make sure your email is confirmed in Supabase.";
       }
       setError(errorMessage);
       setLoading(false);
@@ -62,10 +96,10 @@ export default function AuthPage() {
       {/* Dynamic Background */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute inset-0 grid-bg opacity-[0.15]" />
-        
+
         {/* Animated Mesh Gradients */}
-        <motion.div 
-          animate={{ 
+        <motion.div
+          animate={{
             scale: [1, 1.2, 1],
             rotate: [0, 90, 0],
             opacity: [0.3, 0.5, 0.3]
@@ -73,8 +107,8 @@ export default function AuthPage() {
           transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
           className="absolute -left-[20%] -top-[20%] h-[70vw] w-[70vw] rounded-full bg-cyan-600/20 blur-[150px] transform-gpu will-change-transform"
         />
-        <motion.div 
-          animate={{ 
+        <motion.div
+          animate={{
             scale: [1, 1.5, 1],
             rotate: [0, -90, 0],
             opacity: [0.2, 0.4, 0.2]
@@ -87,9 +121,9 @@ export default function AuthPage() {
 
       {/* Main Content Container */}
       <div className="relative z-10 flex w-full max-w-[1200px] flex-col items-center justify-center p-6 lg:flex-row lg:justify-between lg:p-12">
-        
+
         {/* Left Side: Brand Narrative */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, x: -50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
@@ -101,12 +135,12 @@ export default function AuthPage() {
             </div>
             <span className="font-display text-2xl font-black tracking-widest text-white">BEACON</span>
           </div>
-          
+
           <h1 className="mt-12 font-display text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.1] tracking-tight text-white">
             <span className="block text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-500">Access your</span>
             <span className="block">Enterprise Brain.</span>
           </h1>
-          
+
           <p className="mt-6 max-w-md text-lg text-neutral-400 leading-relaxed font-sans">
             Connect your workplace. Route complex intents across HR, IT, and Finance with absolute explainability.
           </p>
@@ -125,7 +159,7 @@ export default function AuthPage() {
         </motion.div>
 
         {/* Right Side: Auth Form */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
@@ -134,7 +168,7 @@ export default function AuthPage() {
           <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.02] p-8 sm:p-10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
             {/* Inner subtle glow */}
             <div className="absolute -top-24 -right-24 h-48 w-48 rounded-full bg-cyan-500/20 blur-[60px]" />
-            
+
             <div className="relative z-10 flex flex-col">
               {/* Form Toggle */}
               <div className="mb-8 flex rounded-full border border-white/5 bg-black/20 p-1 backdrop-blur-md">
@@ -170,6 +204,11 @@ export default function AuthPage() {
               </div>
 
               <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                {infoMessage && (
+                  <div className="rounded-xl border border-cyan-500/50 bg-cyan-500/10 p-4 text-sm text-cyan-300">
+                    {infoMessage}
+                  </div>
+                )}
                 {error && (
                   <div className="rounded-xl border border-red-500/50 bg-red-500/10 p-4 text-sm text-red-400">
                     {error}

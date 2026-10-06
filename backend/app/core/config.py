@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     
     FRONTEND_URL: str = "http://localhost:3000"
 
+    SUPABASE_URL: str
+    SUPABASE_ANON_KEY: str
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore"
