@@ -7,7 +7,7 @@ import type { Msg } from "./types";
 
 export function NexusMessage({ msg }: { msg: Msg }) {
   const [showSources, setShowSources] = useState(false);
-  
+
   const hasEvidence = msg.evidence && msg.evidence.length > 0;
 
   return (
@@ -18,20 +18,15 @@ export function NexusMessage({ msg }: { msg: Msg }) {
           <span className="font-mono text-[10px] tracking-[0.24em] text-muted-foreground">
             BEACON
           </span>
-          {msg.confidence && !msg.requiresLogin && (
-            <span className="ml-auto rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 font-mono text-[10px] text-foreground">
-              {msg.confidence}% confidence
-            </span>
-          )}
         </div>
         <p className="mt-4 text-sm leading-relaxed text-foreground">
           {msg.text}
         </p>
-        
+
         {msg.requiresLogin && (
           <div className="mt-5">
-            <Link 
-              href="/auth" 
+            <Link
+              href="/auth"
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20"
             >
               <LogIn className="h-4 w-4" />
@@ -39,7 +34,7 @@ export function NexusMessage({ msg }: { msg: Msg }) {
             </Link>
           </div>
         )}
-        
+
         {/* ChatGPT-style expandable sources button inside the chat bubble */}
         {hasEvidence && (
           <div className="mt-4 pt-4 border-t border-white/5">
@@ -52,11 +47,11 @@ export function NexusMessage({ msg }: { msg: Msg }) {
               </span>
               <span>Sources</span>
               <span className="text-[10px] opacity-70">({msg.evidence?.length})</span>
-              <ChevronDown 
-                className={`ml-1 h-3.5 w-3.5 transition-transform duration-200 ${showSources ? "rotate-180" : ""}`} 
+              <ChevronDown
+                className={`ml-1 h-3.5 w-3.5 transition-transform duration-200 ${showSources ? "rotate-180" : ""}`}
               />
             </button>
-            
+
             <AnimatePresence>
               {showSources && (
                 <motion.div

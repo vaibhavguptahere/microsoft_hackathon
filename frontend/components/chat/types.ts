@@ -4,7 +4,6 @@ export type Msg = {
   role: "user" | "nexus";
   text: string;
   evidence?: Evidence[];
-  confidence?: number;
   agents?: string[];
   requiresLogin?: boolean;
 };

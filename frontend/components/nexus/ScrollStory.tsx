@@ -111,9 +111,9 @@ function QuerySplit() {
   };
 
   const quickSamples = [
-    "My VPN isn't working and can I work from home tomorrow?",
-    "How do I expense a client dinner in Berlin?",
-    "What's the onboarding checklist for a new engineer?",
+    "How many annual leaves do I have left this year?",
+    "I need a new laptop and my VPN is broken.",
+    "Can I work from home tomorrow, and how do I log into the remote portal?",
   ];
 
   return (
@@ -447,15 +447,14 @@ function NodeChip({
 /* SECTION 4 — Enterprise Grade */
 const COMPLIANCE_ITEMS = [
   { title: "Multi-Agent Routing", desc: "Dynamic dispatch to specialized IT, HR, and Finance agents" },
-  { title: "Explainable Decisions", desc: "Every answer includes citations and full reasoning traces" },
-  { title: "Human-in-the-loop", desc: "Automatic standby and escalation if confidence drops below 70%" },
+  { title: "Explainable Decisions", desc: "Every answer includes citations and full reasoning traces" }
 ];
 
 const AUDIT_LOGS = [
   { time: "12:34:21", event: "router_dispatched" },
   { time: "12:34:18", event: "intent_classified" },
   { time: "12:34:15", event: "policy_retrieved" },
-  { time: "12:34:12", event: "confidence_scored" },
+  { time: "12:34:12", event: "sources_cited" },
   { time: "12:34:09", event: "response_generated" },
 ];
 

@@ -2,11 +2,11 @@
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 
-export function ChatSidebar({ 
-  thinking, 
-  sessions = [], 
-  onSelectChat 
-}: { 
+export function ChatSidebar({
+  thinking,
+  sessions = [],
+  onSelectChat
+}: {
   thinking: string[] | null,
   sessions?: any[],
   onSelectChat?: (id: string) => void
@@ -56,10 +56,6 @@ export function ChatSidebar({
           </div>
         </div>
 
-        <div className="mt-4 flex items-center gap-2 rounded-xl border border-border/60 px-3 py-2 text-[11px] text-muted-foreground shrink-0">
-          <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-          Human escalation on standby
-        </div>
       </div>
     </aside>
   );

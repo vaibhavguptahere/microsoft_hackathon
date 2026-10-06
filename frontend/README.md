@@ -18,7 +18,7 @@ Powers the 3D architecture visualization, representing Nexus, domain agents, kno
 
 ## `frontend/src/components/chat/`
 
-Contains the interactive assistant UI, including messages, routing status, confidence, agent activity, and source citations.
+Contains the interactive assistant UI, including messages, routing status, agent activity, and source citations.
 
 ## `frontend/src/services/`
 

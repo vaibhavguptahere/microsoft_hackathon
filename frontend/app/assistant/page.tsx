@@ -10,9 +10,9 @@ import { ChatSidebar } from "@/components/chat/ChatSidebar";
 import type { Msg } from "@/components/chat/types";
 
 const SUGGESTIONS = [
-  "My VPN isn't working and can I work from home tomorrow?",
-  "How do I expense a client dinner in Berlin?",
-  "What's the onboarding checklist for a new engineer?",
+  "How many annual leaves do I have left this year?",
+  "I need a new laptop and my VPN is broken.",
+  "Can I work from home tomorrow, and how do I log into the remote portal?",
 ];
 
 
@@ -116,7 +116,7 @@ export default function AssistantPage() {
         role: m.role,
         text: m.content,
         evidence: m.sources || [],
-        confidence: m.role === 'nexus' ? 90 : undefined,
+        sources: m.sources,
         agents: m.domain ? ["Router Agent", `${m.domain} Agent`, "Response Generator"] : [],
       })));
     }
@@ -208,7 +208,7 @@ export default function AssistantPage() {
           role: "nexus",
           text: data.answer,
           evidence: sourcesMapped,
-          confidence: data.requires_login ? undefined : 90,
+          sources: data.sources || [],
           agents: ["Router Agent", `${data.domain} Agent`, "Response Generator"],
           requiresLogin: data.requires_login
         }]);
@@ -218,7 +218,6 @@ export default function AssistantPage() {
           role: "nexus",
           text: data.error || "An error occurred.",
           evidence: [],
-          confidence: 0,
           agents: ["Router Agent"]
         }]);
       }
@@ -229,7 +228,6 @@ export default function AssistantPage() {
         role: "nexus",
         text: "Failed to connect to the backend server.",
         evidence: [],
-        confidence: 0,
         agents: ["Router Agent"]
       }]);
     }
@@ -343,15 +341,28 @@ export default function AssistantPage() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
-                  className="glass-panel rounded-3xl p-5"
+                  className="relative glass-panel rounded-3xl p-5 overflow-hidden"
                 >
-                  <div className="flex items-center gap-2 text-[13px] text-primary font-medium tracking-wide p-1">
-                    <Sparkles className="h-4 w-4 animate-pulse" />
-                    <div className="flex">
+                  {/* Subtle ambient moving glow */}
+                  <motion.div 
+                    animate={{ x: ["-100%", "100%"] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent w-[200%] -ml-[50%]"
+                  />
+
+                  <div className="relative flex items-center gap-3 font-medium tracking-wide p-1">
+                    {/* Glowing ping radar icon */}
+                    <div className="relative flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 border border-primary/30 shadow-[0_0_15px_rgba(6,182,212,0.3)]">
+                      <div className="absolute inset-0 rounded-full animate-ping bg-primary/20 duration-1000" />
+                      <Sparkles className="h-4 w-4 text-primary relative z-10" />
+                    </div>
+                    
+                    {/* Dancing text with drop shadow */}
+                    <div className="flex text-[14px] font-semibold text-primary drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]">
                       {"Beacon is orchestrating...".split("").map((char, index) => (
                         <motion.span
                           key={index}
-                          animate={{ y: [0, -4, 0], opacity: [0.5, 1, 0.5] }}
+                          animate={{ y: [0, -4, 0], opacity: [0.6, 1, 0.6] }}
                           transition={{
                             duration: 0.8,
                             repeat: Infinity,
