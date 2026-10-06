@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+ollama
+pydantic
+pydantic-settings
+python-dotenv
+pytest
+httpx
+transformers
+torch
+sentencepiece
+supabase
+azure-search-documents
+azure-core
+openai
