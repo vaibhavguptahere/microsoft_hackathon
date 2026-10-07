@@ -27,6 +27,7 @@ export default function AssistantPage() {
   const [thinking, setThinking] = useState<string[] | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const idRef = useRef(0);
+  const activeChatIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -98,6 +99,10 @@ export default function AssistantPage() {
   const [chatSessions, setChatSessions] = useState<any[]>([]);
 
   useEffect(() => {
+    activeChatIdRef.current = chatId;
+  }, [chatId]);
+
+  useEffect(() => {
     if (user) {
       supabase.from("chats").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).then(({ data }) => {
         if (data) setChatSessions(data);
@@ -108,6 +113,7 @@ export default function AssistantPage() {
   const loadChat = async (id: string) => {
     if (id === chatId) return;
     setChatId(id);
+    setThinking(null);
     setMessages([]);
     const { data: msgs } = await supabase.from("messages").select("*").eq("chat_id", id).order("created_at", { ascending: true });
     if (msgs) {
@@ -119,6 +125,31 @@ export default function AssistantPage() {
         sources: m.sources,
         agents: m.domain ? ["Router Agent", `${m.domain} Agent`, "Response Generator"] : [],
       })));
+    }
+  };
+
+  const handleNewChat = () => {
+    setChatId(null);
+    setMessages([]);
+    setThinking(null);
+  };
+
+  const handleDeleteChat = async (id: string) => {
+    setChatSessions((prev) => prev.filter((c) => c.id !== id));
+    if (chatId === id) {
+      handleNewChat();
+    }
+    const { error } = await supabase.from("chats").delete().eq("id", id);
+    if (error) {
+      console.error("Failed to delete chat:", error);
+    }
+  };
+
+  const handleRenameChat = async (id: string, newTitle: string) => {
+    setChatSessions((prev) => prev.map((c) => c.id === id ? { ...c, title: newTitle } : c));
+    const { error } = await supabase.from("chats").update({ title: newTitle }).eq("id", id);
+    if (error) {
+      console.error("Failed to rename chat:", error);
     }
   };
 
@@ -203,26 +234,32 @@ export default function AssistantPage() {
           }]);
         }
 
-        setMessages((m) => [...m, {
-          id: ++idRef.current,
-          role: "nexus",
-          text: data.answer,
-          evidence: sourcesMapped,
-          sources: data.sources || [],
-          agents: ["Router Agent", `${data.domain} Agent`, "Response Generator"],
-          requiresLogin: data.requires_login
-        }]);
+        if (activeChatIdRef.current === currentChatId) {
+          setMessages((m) => [...m, {
+            id: ++idRef.current,
+            role: "nexus",
+            text: data.answer,
+            evidence: sourcesMapped,
+            sources: data.sources || [],
+            agents: ["Router Agent", `${data.domain} Agent`, "Response Generator"],
+            requiresLogin: data.requires_login
+          }]);
+        }
       } else {
-        setMessages((m) => [...m, {
-          id: ++idRef.current,
-          role: "nexus",
-          text: data.error || "An error occurred.",
-          evidence: [],
-          agents: ["Router Agent"]
-        }]);
+        if (activeChatIdRef.current === currentChatId) {
+          setMessages((m) => [...m, {
+            id: ++idRef.current,
+            role: "nexus",
+            text: data.error || "An error occurred.",
+            evidence: [],
+            agents: ["Router Agent"]
+          }]);
+        }
       }
     } catch (err) {
-      setThinking(null);
+      if (activeChatIdRef.current === currentChatId) {
+        setThinking(null);
+      }
       setMessages((m) => [...m, {
         id: ++idRef.current,
         role: "nexus",
@@ -240,7 +277,14 @@ export default function AssistantPage() {
       <div className="pointer-events-none absolute inset-0 aurora-bg opacity-50" />
 
       {/* Floating sidebar */}
-      <ChatSidebar thinking={thinking} sessions={chatSessions} onSelectChat={loadChat} />
+      <ChatSidebar
+        thinking={thinking}
+        sessions={chatSessions}
+        onSelectChat={loadChat}
+        onNewChat={handleNewChat}
+        onDeleteChat={handleDeleteChat}
+        onRenameChat={handleRenameChat}
+      />
 
       {/* Logout Button */}
       {user && (
@@ -318,6 +362,16 @@ export default function AssistantPage() {
               </div>
             )}
 
+            {messages.length > 0 && chatId && (
+              <div className="flex justify-center pb-2">
+                <span className="rounded-full bg-white/5 px-3 py-1 text-[11px] tracking-wide text-muted-foreground backdrop-blur-md">
+                  {chatSessions.find((c) => c.id === chatId)?.created_at
+                    ? new Date(chatSessions.find((c) => c.id === chatId)?.created_at).toLocaleString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                    : new Date().toLocaleString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+            )}
+
             {messages.map((m) =>
               m.role === "user" ? (
                 <motion.div
@@ -326,9 +380,9 @@ export default function AssistantPage() {
                   animate={{ opacity: 1, y: 0 }}
                   className="flex justify-end"
                 >
-                  <p className="glass-panel max-w-[85%] rounded-3xl rounded-br-lg px-5 py-3 text-sm text-foreground">
+                  <div className="glass-panel max-w-[85%] rounded-3xl rounded-br-[8px] bg-white/5 border border-white/10 px-5 py-3.5 text-[14px] leading-[1.6] font-medium text-foreground/90 tracking-[0.01em] shadow-lg shadow-black/20">
                     {m.text}
-                  </p>
+                  </div>
                 </motion.div>
               ) : (
                 <NexusMessage key={m.id} msg={m} />
