@@ -19,9 +19,9 @@ export function NexusMessage({ msg }: { msg: Msg }) {
             BEACON
           </span>
         </div>
-        <p className="mt-4 text-sm leading-relaxed text-foreground">
+        <div className="mt-5 text-[14px] leading-[1.75] text-foreground/90 font-medium whitespace-pre-wrap tracking-[0.015em]">
           {msg.text}
-        </p>
+        </div>
 
         {msg.requiresLogin && (
           <div className="mt-5">
