@@ -39,8 +39,8 @@ If the context does not contain the answer, respond with:
 
 Rules:
 - Be concise and natural. Avoid bullet-point overload unless listing items is genuinely clearer.
-- Cite the source document name and page number in parentheses after each claim, e.g. (BT-HR-001 Employee Leave Policy, Page 2).
-- If multiple sources support the same claim, cite all of them.
+- Structure your response into distinct, short paragraphs with blank lines between them to ensure excellent readability.
+- Do NOT include inline citations or source references in the text (e.g. do not write "(BT-IT-002, Page 2)"). The UI already displays the sources separately below the answer.
 - Do not reference the context passages directly — write as if answering naturally.
 """
 
