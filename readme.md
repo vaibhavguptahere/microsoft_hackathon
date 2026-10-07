@@ -37,15 +37,17 @@ This project is built using a modern decoupled architecture, combining a respons
 - **Security**: Row Level Security (RLS) is strictly enforced so users can only access their own data.
 
 ### 🔄 System Approach & Request Flow
-The core approach behind Beacon relies on a multi-intent, hybrid query routing system ensuring queries are directed to the correct domain-specific knowledge bases.
+The core approach behind Beacon relies on a multi-intent, two-tier query routing system ensuring queries are directed to the correct domain-specific knowledge bases.
 
 1. **User Input:** A user enters a query on the Next.js frontend.
 2. **Backend Processing:** The query is forwarded to the FastAPI backend (`/api/chat`).
-3. **Intent Classification (Ollama):** The zero-shot classifier running on a local Ollama instance (`beacon-router`) analyzes the query and classifies it into an enterprise domain (HR, IT, Finance) or flags it as out-of-scope / needing clarification.
-4. **Domain Routing:** The backend router captures the intent and determines the correct Azure RAG (Retrieval-Augmented Generation) pipeline.
-5. **Knowledge Retrieval (Azure RAG):** The system securely retrieves contextually relevant evidence from the specific domain's knowledge base. *(Note: Currently in development/simulation phase).*
-6. **Response Generation:** The LLM forms a coherent answer grounded *only* in the retrieved evidence.
-7. **Client Delivery:** The final answer, along with cited sources, is returned to the frontend and displayed to the user via the chat interface.
+3. **Intent Classification (Two-Tier System):**
+   - **Tier 1 (Fast Path):** A lightweight Zero-Shot Classifier analyzes the query. If it has high confidence of a single domain, it routes immediately (150-300ms).
+   - **Tier 2 (Slow Path):** If the query is ambiguous or multi-domain, it falls back to a local **Ollama** instance (`beacon-router` model) for deep reasoning (~3-8s).
+4. **Domain Agents Delegation:** The orchestrator routes the classified query to specialized Domain Agents (HR, IT, Finance). Multi-intent queries may spawn parallel requests.
+5. **Knowledge Retrieval (RAG):** The active Domain Agent converts the query to embeddings and searches the Vector Database for contextually relevant enterprise evidence.
+6. **Response Generation:** The agent compiles a prompt (Query + Context) and sends it to the LLM to form a grounded, factual answer.
+7. **Synthesis & Client Delivery:** If multiple agents were involved, a Synthesizer combines their answers. The final response, along with cited sources and confidence scores, is returned to the frontend.
 
 ---
 
