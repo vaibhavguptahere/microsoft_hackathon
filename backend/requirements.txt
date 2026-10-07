@@ -13,3 +13,7 @@ supabase
 azure-search-documents
 azure-core
 openai
+pypdf
+scikit-learn
+sentence-transformers
+numpy
