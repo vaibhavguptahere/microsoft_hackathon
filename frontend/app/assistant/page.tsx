@@ -10,7 +10,7 @@ import { ChatSidebar } from "@/components/chat/ChatSidebar";
 import type { Msg } from "@/components/chat/types";
 
 const SUGGESTIONS = [
-  "How many annual leaves do I have left this year?",
+  "How many annual leaves are there?",
   "I need a new laptop and my VPN is broken.",
   "Can I work from home tomorrow, and how do I log into the remote portal?",
 ];
@@ -344,7 +344,7 @@ export default function AssistantPage() {
                   className="relative glass-panel rounded-3xl p-5 overflow-hidden"
                 >
                   {/* Subtle ambient moving glow */}
-                  <motion.div 
+                  <motion.div
                     animate={{ x: ["-100%", "100%"] }}
                     transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
                     className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent w-[200%] -ml-[50%]"
@@ -356,7 +356,7 @@ export default function AssistantPage() {
                       <div className="absolute inset-0 rounded-full animate-ping bg-primary/20 duration-1000" />
                       <Sparkles className="h-4 w-4 text-primary relative z-10" />
                     </div>
-                    
+
                     {/* Dancing text with drop shadow */}
                     <div className="flex text-[14px] font-semibold text-primary drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]">
                       {"Beacon is orchestrating...".split("").map((char, index) => (
